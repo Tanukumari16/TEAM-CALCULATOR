@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Totally Normal Calculator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            transition: all 0.5s ease;
+        }
+
+        .calculator {
+            background: #2c3e50;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            max-width: 350px;
+            transition: all 0.3s ease;
+        }
+
+        .calculator.party-mode {
+            animation: rainbow 2s linear infinite;
+            transform: scale(1.05);
+        }
+
+        @keyframes rainbow {
+            0% { filter: hue-rotate(0deg); }
+            100% { filter: hue-rotate(360deg); }
+        }
+
+        .display {
+            background: #34495e;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #result {
+            color: #ecf0f1;
+            font-size: 2.5em;
+            font-weight: bold;
+            text-align: right;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+
+        .easter-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #e74c3c;
+            font-size: 1.2em;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+        }
+
+        button {
+            padding: 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.3em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .number {
+            background: #3498db;
+            color: white;
+        }
+
+        .operator {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .special {
+            background: #f39c12;
+            color: white;
+        }
+
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .secret-counter {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: #7f8c8d;
+            font-size: 0.8em;
+            opacity: 0.3;
+        }
+
+        .konami-hint {
+            position: absolute;
+            bottom: -50px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #bdc3c7;
+            font-size: 0.9em;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            text-align: center;
+        }
+
+        .calculator:hover .konami-hint {
+            opacity: 0.6;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+        }
+
+        .bounce {
+            animation: bounce 0.5s;
+        }
+    </style>
+</head>
+<body>
+    <div class="calculator" id="calculator">
+        <div class="secret-counter" id="secretCounter">🥚 0</div>
+        
+        <div class="display">
+            <div id="result">0</div>
+            <div class="easter-message" id="easterMessage"></div>
+        </div>
+
+        <div class="buttons">
+            <button class="special" onclick="clearAll()">C</button>
+            <button class="special" onclick="clearEntry()">CE</button>
+            <button class="operator" onclick="operate('/')" title="Try clicking me 5 times!">÷</button>
+            <button class="operator" onclick="operate('*')">×</button>
+            
+            <button class="number" onclick="inputNumber('7')">7</button>
+            <button class="number" onclick="inputNumber('8')">8</button>
+            <button class="number" onclick="inputNumber('9')">9</button>
+            <button class="operator" onclick="operate('-')">−</button>
+            
+            <button class="number" onclick="inputNumber('4')">4</button>
+            <button class="number" onclick="inputNumber('5')" title="Lucky number!">5</button>
+            <button class="number" onclick="inputNumber('6')">6</button>
+            <button class="operator" onclick="operate('+')">+</button>
+            
+            <button class="number" onclick="inputNumber('1')">1</button>
+            <button class="number" onclick="inputNumber('2')">2</button>
+            <button class="number" onclick="inputNumber('3')">3</button>
+            <button class="special" onclick="calculate()" rowspan="2">=</button>
+            
+            <button class="number" onclick="inputNumber('0')" style="grid-column: span 2;">0</button>
+            <button class="number" onclick="inputNumber('.')">.</button>
+        </div>
+
+        <div class="konami-hint">
+            Try: ↑↑↓↓←→←→BA or type "HELLO"
+        </div>
+    </div>
+
+    <script>
+        let currentInput = '0';
+        let operator = null;
+        let previousInput = null;
+        let shouldResetDisplay = false;
+        let secretCounter = 0;
+        let divisionClicks = 0;
+        let konamiCode = [];
+        let konamiSequence = [
+            'ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 
+            'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 
+            'KeyB', 'KeyA'
+        ];
+        let typedSequence = '';
+        
+        const easterEggs = [
+            "🎉 You found an easter egg!",
+            "🐰 Hoppy calculating!",
+            "🥚 Crack-ing good math!",
+            "✨ Magic numbers ahead!",
+            "🎊 Calculator party time!",
+            "🔥 You're on fire!",
+            "🌟 Star calculator activated!",
+            "🚀 To infinity and beyond!",
+            "💖 Love your dedication!",
+            "🎵 Sweet calculations!"
+        ];
+
+        function updateDisplay() {
+            document.getElementById('result').textContent = currentInput;
+        }
+
+        function inputNumber(num) {
+            if (shouldResetDisplay) {
+                currentInput = '0';
+                shouldResetDisplay = false;
+            }
+            
+            if (currentInput === '0' && num !== '.') {
+                currentInput = num;
+            } else {
+                currentInput += num;
+            }
+            
+            updateDisplay();
+            
+            // Easter egg for typing HELLO
+            typedSequence += num;
+            if (typedSequence.slice(-5) === '43110') { // HELLO on calculator
+                showEasterEgg("👋 HELLO there, clever coder!");
+                typedSequence = '';
+            }
+        }
+
+        function operate(op) {
+            if (op === '/') {
+                divisionClicks++;
+                if (divisionClicks === 5) {
+                    showEasterEgg("🎯 Division devotion detected!");
+                    divisionClicks = 0;
+                }
+            }
+            
+            if (operator && !shouldResetDisplay) {
+                calculate();
+            }
+            
+            operator = op;
+            previousInput = currentInput;
+            shouldResetDisplay = true;
+        }
+
+        function calculate() {
+            if (operator && previousInput !== null) {
+                const prev = parseFloat(previousInput);
+                const current = parseFloat(currentInput);
+                let result;
+                
+                switch (operator) {
+                    case '+': result = prev + current; break;
+                    case '-': result = prev - current; break;
+                    case '*': result = prev * current; break;
+                    case '/': 
+                        if (current === 0) {
+                            showEasterEgg("🤖 Cannot divide by zero, silly!");
+                            return;
+                        }
+                        result = prev / current; 
+                        break;
+                }
+                
+                // Easter eggs for special results
+                if (result === 42) {
+                    showEasterEgg("🌌 The Answer to Everything!");
+                } else if (result === 69 || result === 420) {
+                    showEasterEgg("😏 Nice.");
+                } else if (result === 1337) {
+                    showEasterEgg("💻 L33T calculation!");
+                } else if (result % 1 === 0 && result.toString().split('').every(d => d === result.toString()[0])) {
+                    showEasterEgg("🔢 Repeating digits magic!");
+                }
+                
+                currentInput = result.toString();
+                operator = null;
+                previousInput = null;
+                shouldResetDisplay = true;
+                updateDisplay();
+                
+                document.getElementById('calculator').classList.add('bounce');
+                setTimeout(() => {
+                    document.getElementById('calculator').classList.remove('bounce');
+                }, 500);
+            }
+        }
+
+        function clearAll() {
+            currentInput = '0';
+            operator = null;
+            previousInput = null;
+            shouldResetDisplay = false;
+            updateDisplay();
+        }
+
+        function clearEntry() {
+            currentInput = '0';
+            updateDisplay();
+        }
+
+        function showEasterEgg(message) {
+            secretCounter++;
+            document.getElementById('secretCounter').textContent = `🥚 ${secretCounter}`;
+            
+            const messageEl = document.getElementById('easterMessage');
+            const resultEl = document.getElementById('result');
+            
+            messageEl.textContent = message;
+            resultEl.style.opacity = '0.3';
+            messageEl.style.opacity = '1';
+            
+            if (secretCounter >= 5) {
+                document.getElementById('calculator').classList.add('party-mode');
+            }
+            
+            setTimeout(() => {
+                resultEl.style.opacity = '1';
+                messageEl.style.opacity = '0';
+                
+                if (secretCounter >= 10) {
+                    document.getElementById('calculator').classList.remove('party-mode');
+                }
+            }, 2000);
+        }
+
+        // Konami Code Easter Egg
+        document.addEventListener('keydown', (e) => {
+            konamiCode.push(e.code);
+            
+            if (konamiCode.length > konamiSequence.length) {
+                konamiCode.shift();
+            }
+            
+            if (konamiCode.length === konamiSequence.length && 
+                konamiCode.every((code, i) => code === konamiSequence[i])) {
+                showEasterEgg("🎮 KONAMI CODE ACTIVATED!");
+                document.body.style.background = 'linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4, #feca57, #ff9ff3)';
+                document.body.style.backgroundSize = '400% 400%';
+                document.body.style.animation = 'gradientShift 3s ease infinite';
+                
+                const style = document.createElement('style');
+                style.textContent = `
+                    @keyframes gradientShift {
+                        0% { background-position: 0% 50%; }
+                        50% { background-position: 100% 50%; }
+                        100% { background-position: 0% 50%; }
+                    }
+                `;
+                document.head.appendChild(style);
+                
+                konamiCode = [];
+            }
+        });
+
+        // Random easter egg trigger
+        setInterval(() => {
+            if (Math.random() < 0.001) { // Very rare random easter egg
+                const randomEgg = easterEggs[Math.floor(Math.random() * easterEggs.length)];
+                showEasterEgg(randomEgg);
+            }
+        }, 1000);
+
+        // Initialize
+        updateDisplay();
+    </script>
+</body>
+</html>
+"Add Easter egg calculator"
